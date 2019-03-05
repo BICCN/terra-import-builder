@@ -1,2 +1,2 @@
-# NeMO / Terra Integration
-Cloud Function used to pull metadata into Terra workspaces from the [NeMO Archive](https://nemoarchive.org/).
+# Terra Import Builder
+Cloud Function for staging JSON payloads in GCS for use by Terra's pull-based import API.
