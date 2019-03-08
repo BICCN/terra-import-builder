@@ -2,6 +2,7 @@
 set -euo pipefail
 
 declare -r SCRIPT_DIR=$(cd $(dirname $0) && pwd)
+declare -r CORS_CONFIG=${SCRIPT_DIR}/cors-config.json
 
 # What we really want is to have a set of valid environment tokens
 # with a "contains" check.
@@ -25,24 +26,34 @@ function secret_path () {
     echo "secret/dsde/monster/$1/biccn/terra-import-builder/$2"
 }
 
-function deploy () {
-    local -r env=$1
-    local -r env_secrets=$(secret_path ${env} env)
-    local -r account_secrets=$(secret_path ${env} service-account.json)
+function set_cors () {
+  gsutil cors set ${CORS_CONFIG} "gs://$1"
+}
 
-    gcloud --project=$(vault read -field=project ${env_secrets}) functions deploy \
+function deploy () {
+    gcloud --project=$1 functions deploy \
         build-terra-import \
         --runtime=nodejs6 \
         --trigger-http \
         --entry-point=buildTerraImport \
-        --set-env-vars TMP_BUCKET=$(vault read -field=bucket ${env_secrets}) \
+        --set-env-vars TMP_BUCKET=$2 \
         --source=${SCRIPT_DIR}/function \
-        --service-account=$(vault read -field=client_email ${account_secrets})
+        --service-account=$3
 }
 
 main () {
     check_usage ${@}
-    deploy $1
+    local -r env=$1
+
+    local -r env_secrets=$(secret_path ${env} env)
+    local -r account_secrets=$(secret_path ${env} service-account.json)
+
+    local -r deploy_project=$(vault read -field=project ${env_secrets})
+    local -r tmp_bucket=$(vault read -field=bucket ${env_secrets})
+    local -r service_account_email=$(vault read -field=client_email ${account_secrets})
+
+    set_cors ${tmp_bucket}
+    deploy ${deploy_project} ${tmp_bucket} ${service_account_email}
 }
 
 main ${@}

@@ -4,6 +4,7 @@ const groupBy = require('lodash.groupby');
 const map = require('lodash.map');
 const pluralize = require('pluralize');
 const {Storage} = require('@google-cloud/storage');
+const uniq = require('lodash.uniq');
 const uuid = require('uuid/v4');
 const {validate} = require('jsonschema');
 
@@ -40,6 +41,8 @@ const schema = {
         },
         "entityId": {
             "type": "string",
+            // NOTE: This pattern was pulled from the internals of Rawls,
+            // it might change without notice in the future.
             "pattern": "^[A-Za-z0-9\\-_]+$"
         },
         "entity": {
@@ -66,6 +69,20 @@ const schema = {
     },
     "required": ["entities", "cohortName"]
 };
+
+/**
+ * Extract and return the unique name/type pairs from a collection
+ * of entities.
+ *
+ * @param {Object[]} entities - JSON entities to group into sets.
+ * @param {string} entities[].name - Unique ID of an entity.
+ * @param {string} entities[].entityType - Type of an entity.
+ */
+const collectUniqueIds = (entities) => {
+    return uniq(map(entities, ({entityType, name}) => {
+        return {entityType, name}
+    }));
+}
 
 /**
  * Build a collection of "set" entities for Terra encapsulating
@@ -142,12 +159,20 @@ exports.buildTerraImport = (req, res) => {
         })
     } else {
         const { entities, cohortName } = req.body;
-        const entitySets = collectEntitySets(entities, cohortName);
-        writeStagingFile(entities.concat(entitySets))
-            .then((url) => res.status(201).json({ url }))
-            .catch((err) => {
-                console.error(err);
-                res.status(500).json({ message: 'Failed to build Terra import bundle' });
-            });
+        const uniqueIds = collectUniqueIds(entities);
+
+        if (uniqueIds.length !== entities.length) {
+            // Fail fast here, otherwise users will end up seeing an internal DB error
+            // from Rawls on the Terra import page.
+            res.status(400).json({ message: 'Duplicate entity IDs found in payload' });
+        } else {
+            const entitySets = collectEntitySets(uniqueIds, cohortName);
+            writeStagingFile(entities.concat(entitySets))
+                .then((url) => res.status(201).json({ url }))
+                .catch((err) => {
+                    console.error(err);
+                    res.status(500).json({ message: 'Failed to build Terra import bundle' });
+                });
+        }
     }
 };
