@@ -10,7 +10,7 @@ declare -r CORS_CONFIG=${SCRIPT_DIR}/cors-config.json
 # Instead we use the valid env strings as map keys with non-empty values.
 # To check if a token is a valid env, we index into the map and assert
 # that the result is non-empty.
-declare -rA VALID_ENVS=([dev]=valid)
+declare -rA VALID_ENVS=([dev]=valid [prod]=valid)
 
 function check_usage () {
   if [[ $# -ne 1 ]]; then
