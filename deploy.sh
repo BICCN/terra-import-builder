@@ -33,7 +33,7 @@ function set_cors () {
 function deploy () {
     gcloud --project=$1 functions deploy \
         build-terra-import \
-        --runtime=nodejs6 \
+        --runtime=nodejs10 \
         --trigger-http \
         --entry-point=buildTerraImport \
         --set-env-vars TMP_BUCKET=$2 \
