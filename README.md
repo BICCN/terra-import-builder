@@ -25,5 +25,3 @@ $ vault write secret/dsde/monster/${env}/biccn/terra-import-builer/service-accou
 ```
 
 Finally, add the env name to the `VALID_ENVS` constant declared at the top of `deploy.sh`.
-
-TESTING
